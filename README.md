@@ -2,8 +2,11 @@ About
 ----------------------
 
 BCL2BAM2FASTQ is a series of programs to convert from :
+
 1) BCL to BAM
+
 2) BAM to fastq
+
 3) fastq to BAM
 
 Downloading:

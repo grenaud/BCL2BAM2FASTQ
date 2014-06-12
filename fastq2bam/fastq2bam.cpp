@@ -38,6 +38,7 @@ int main (int argc, char *argv[]) {
     bool indexFromDefline       = false;
 
     bool singleEndMode=false;
+    int qualForFasta=0;
 
     if( (argc== 1) ||
         (argc== 2 && string(argv[1]) == "-h") ||
@@ -53,6 +54,7 @@ int main (int argc, char *argv[]) {
         cout<<"\t\t-i2 [index2]"<<"\t\t"<<"Use this index sequence as the second index field (XJ)"<<endl;
         cout<<"\t\t-r  [read group]"<<endl;
         cout<<"\t\t-a  If input is fasta"<<endl;
+	cout<<"\t\t-q  [qual]"<<"\t\t"<<"If input is fasta, use this qual as the quality (Default : "+stringify(qualForFasta)+")"<<endl;
         cout<<"\t\t-si Use the single index specified in the defline (as usually provided by Illumina)"<<endl;
         cout<<"\t\t-di As above but for double index"<<endl;
 
@@ -60,10 +62,19 @@ int main (int argc, char *argv[]) {
     }
 
     int lastIndex=1;
+    bool specifiedQual=false;
+
     for(int i=1;i<(argc);i++){
 	if(strcmp(argv[i],"-o") == 0  ){
             bamoutfile=string(argv[i+1]);
             i++;
+            continue;
+        }
+
+	if(strcmp(argv[i],"-q") == 0  ){
+            qualForFasta=destringify<int>(argv[i+1]);
+            i++;
+	    specifiedQual=true;
             continue;
         }
 
@@ -105,7 +116,12 @@ int main (int argc, char *argv[]) {
 	lastIndex=i;
 	break;
     }
-    
+
+    if( (specifiedQual && !isFasta) ){
+	cerr << "Cannot specify quality if you do not use fasta" << endl;
+        return 1;
+    }
+	
     if(lastIndex == (argc-1)){
 	singleEndMode=true;
     }else{
@@ -289,7 +305,7 @@ int main (int argc, char *argv[]) {
 	toWrite1.QueryBases =  *(fo1->getSeq());
 
 	if(isFasta){
-	    toWrite1.Qualities  =  string(toWrite1.QueryBases.length(),'!');	
+	    toWrite1.Qualities  =  string(toWrite1.QueryBases.length(),char(qualForFasta+33));	
 	}else{
 	    toWrite1.Qualities  =  *(fo1->getQual());
 	}
@@ -306,7 +322,7 @@ int main (int argc, char *argv[]) {
 	    toWrite2.QueryBases =  *(fo2->getSeq());
 
 	    if(isFasta)
-		toWrite2.Qualities  =  string(toWrite2.QueryBases.length(),'!');
+		toWrite2.Qualities  =  string(toWrite2.QueryBases.length(),char(qualForFasta+33));
 	    else
 		toWrite2.Qualities  =  *(fo2->getQual());
 	}
@@ -315,27 +331,27 @@ int main (int argc, char *argv[]) {
 
 	//add tags for indices and fake qualities for the indices
 	if(!index1.empty()){
-	    if(!toWrite1.AddTag("XI", "Z",index1) )                      {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
-	    if(!toWrite1.AddTag("YI", "Z",string(index1.length(),'!')) ) {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+	    if(!toWrite1.AddTag("XI", "Z",index1) )                      {                           cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+	    if(!toWrite1.AddTag("YI", "Z",string(index1.length(),char(qualForFasta+33))) ) {        cerr<<"Internal error, cannot add tag"<<endl; return 1; }
 	    if(!singleEndMode){
-		if(!toWrite2.AddTag("XI", "Z",index1) )                      {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
-		if(!toWrite2.AddTag("YI", "Z",string(index1.length(),'!')) ) {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+		if(!toWrite2.AddTag("XI", "Z",index1) )                      {                       cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+		if(!toWrite2.AddTag("YI", "Z",string(index1.length(),char(qualForFasta+33))) ) {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
 	    }
 	}
 
 	if(!index2.empty()){
-	    if(!toWrite1.AddTag("XJ", "Z",index2) )                      {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
-	    if(!toWrite1.AddTag("YJ", "Z",string(index2.length(),'!')) ) {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+	    if(!toWrite1.AddTag("XJ", "Z",index2) )                      {                           cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+	    if(!toWrite1.AddTag("YJ", "Z",string(index2.length(),char(qualForFasta+33))) ) {        cerr<<"Internal error, cannot add tag"<<endl; return 1; }
 	    if(!singleEndMode){
-		if(!toWrite2.AddTag("XJ", "Z",index2) )                      {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
-		if(!toWrite2.AddTag("YJ", "Z",string(index2.length(),'!')) ) {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+		if(!toWrite2.AddTag("XJ", "Z",index2) )                      {                       cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+		if(!toWrite2.AddTag("YJ", "Z",string(index2.length(),char(qualForFasta+33))) ) {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
 	    }
 	}
 
 	if(!readgroup.empty()){
-	    if(!toWrite1.AddTag("RG", "Z",readgroup) )                      { cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+	    if(!toWrite1.AddTag("RG", "Z",readgroup) )                      {                        cerr<<"Internal error, cannot add tag"<<endl; return 1; }
 	    if(!singleEndMode){
-		if(!toWrite2.AddTag("RG", "Z",readgroup) )                      { cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+		if(!toWrite2.AddTag("RG", "Z",readgroup) )                      {                    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
 	    }
 	}
 

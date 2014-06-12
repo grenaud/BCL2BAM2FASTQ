@@ -55,15 +55,32 @@ int main (int argc, char *argv[]) {
     bool splitRG=false;
 
     string usage=string(""+string(argv[0])+" <options> [bam file] [output prefix]"+		     
-			"\n\nThis program will read a bam file sorted by name and produce 6 files:\n"+
-			"\n\t[output prefix].fq.gz\t\tFor single reads"+
-			"\n\t[output prefix]_r1.fq.gz\tFor first mates"+
-			"\n\t[output prefix]_r2.fq.gz\tFor second mates\n"
-			"\n\t[output prefix].fq.fail.gz\t\tFor single reads that failed"+
-			"\n\t[output prefix]_r1.fq.fail.gz\tFor first mates for clusters that failed"+
-			"\n\t[output prefix]_r2.fq.fail.gz\tFor second mates for clusters that failed\n"
+			"\n\nThis program will read a bam file sorted by name and produce 6 basic files:\n"+
 
-			"Options:\n"+
+			"\n\t[output prefix].fq.gz\t\t\tFor single reads"+
+			"\n\t[output prefix]_r1.fq.gz\t\tFor first mates"+
+			"\n\t[output prefix]_r2.fq.gz\t\tFor second mates\n"
+			"\n\t[output prefix].fq.fail.gz\t\tFor single reads that failed"+
+			"\n\t[output prefix]_r1.fq.fail.gz\t\tFor first mates for clusters that failed"+
+			"\n\t[output prefix]_r2.fq.fail.gz\t\tFor second mates for clusters that failed\n"
+			"\n\nIt may also produce the following files:\n"+
+
+			"\t[output prefix].i1.fq.gz\t\tFirst index for single reads\n"+
+			"\t[output prefix].i1.fail.fq.gz\t\tFirst index for single reads that failed\n\n"+
+			"\t[output prefix].i2.fq.gzt\t\tSecond index for single reads\n"+
+			"\t[output prefix].i2.fail.fq.gz\t\tSecond idnex for single reads that failed\n\n"+
+
+
+			"\t[output prefix]_i1.fq.gz\t\tFirst index for paired reads\n"+
+			"\t[output prefix]_i1.fail.fq.gz\t\tFirst index for paired reads that failed\n\n"+
+
+			"\t[output prefix]_i2.fq.gz\t\tSecond index for paired reads\n"+
+			"\t[output prefix]_i2.fail.fq.gz\t\tSecond index for paired reads that failed\n"+
+
+
+
+
+			"\n\nOptions:\n"+
 			"\t\t"+"--rg"+"\t"+"Split according to read group (Default: "+booleanAsString(splitRG)+" )\n"
 			);		      
 
@@ -86,6 +103,7 @@ int main (int argc, char *argv[]) {
         return 1;           
 
     }
+
 
     string bamfile = string(argv[argc-2]);
     string outdir  = string(argv[argc-1]);
@@ -126,7 +144,8 @@ int main (int argc, char *argv[]) {
 	}
 
 	if(splitRG){
- 
+
+
 	    if(al.HasTag("RG")){
 		al.GetTag("RG",rgTag);
 	    }else{
@@ -145,6 +164,7 @@ int main (int argc, char *argv[]) {
 		string outdir1f  = outdir+"rg_"+rgTag+""+"_r1.fail.fq.gz";
 		string outdir2f  = outdir+"rg_"+rgTag+""+"_r2.fail.fq.gz";
 
+
 		rg2fqwriters[rgTag]->single.open(outdirs.c_str(), ios::out);
 		rg2fqwriters[rgTag]->pairr1.open(outdir1.c_str(), ios::out);
 		rg2fqwriters[rgTag]->pairr2.open(outdir2.c_str(), ios::out);
@@ -153,7 +173,17 @@ int main (int argc, char *argv[]) {
 		rg2fqwriters[rgTag]->pairr1f.open(outdir1f.c_str(), ios::out);
 		rg2fqwriters[rgTag]->pairr2f.open(outdir2f.c_str(), ios::out);
 
-		
+		if(!rg2fqwriters[rgTag]->single.good()){      cerr<<"Cannot write to file "<<outdirs<<endl; return 1; }
+
+
+		if(!rg2fqwriters[rgTag]->single.good()){      cerr<<"Cannot write to file "<<outdirs<<endl; return 1; }
+		if(!rg2fqwriters[rgTag]->pairr1.good()){      cerr<<"Cannot write to file "<<outdir1<<endl; return 1; }
+		if(!rg2fqwriters[rgTag]->pairr2.good()){      cerr<<"Cannot write to file "<<outdir2<<endl; return 1; }
+
+		if(!rg2fqwriters[rgTag]->singlef.good()){      cerr<<"Cannot write to file "<<outdirsf<<endl; return 1; }
+		if(!rg2fqwriters[rgTag]->pairr1f.good()){      cerr<<"Cannot write to file "<<outdir1f<<endl; return 1; }
+		if(!rg2fqwriters[rgTag]->pairr2f.good()){      cerr<<"Cannot write to file "<<outdir2f<<endl; return 1; }
+
 		if(i1present){
 
 		    string outdirsi1    = outdir+"rg_"+rgTag+".i1.fq.gz";
@@ -162,11 +192,18 @@ int main (int argc, char *argv[]) {
 		    rg2fqwriters[rgTag]->singlei1.open(outdirsi1.c_str(), ios::out);
 		    rg2fqwriters[rgTag]->pairi1.open(outdiri1.c_str(), ios::out);
 
+		    if(!rg2fqwriters[rgTag]->singlei1.good()){      cerr<<"Cannot write to file "<<outdirsi1<<endl; return 1; }
+		    if(!rg2fqwriters[rgTag]->pairi1.good()){      cerr<<"Cannot write to file "<<outdiri1<<endl; return 1; }
+
 		    string outdirsi1f    = outdir+"rg_"+rgTag+".i1.fail.fq.gz";
 		    string outdiri1f     = outdir+"rg_"+rgTag+"_i1.fail.fq.gz";
 
 		    rg2fqwriters[rgTag]->singlei1f.open(outdirsi1f.c_str(), ios::out);
 		    rg2fqwriters[rgTag]->pairi1f.open(outdiri1f.c_str(), ios::out);
+
+		    if(!rg2fqwriters[rgTag]->singlei1f.good()){      cerr<<"Cannot write to file "<<outdirsi1f<<endl; return 1; }
+		    if(!rg2fqwriters[rgTag]->pairi1f.good()){      cerr<<"Cannot write to file "<<outdiri1f<<endl; return 1; }
+
 		}
 
 		if(i2present){
@@ -177,17 +214,24 @@ int main (int argc, char *argv[]) {
 		    rg2fqwriters[rgTag]->singlei2.open(outdirsi2.c_str(), ios::out);
 		    rg2fqwriters[rgTag]->pairi2.open(outdiri2.c_str(), ios::out);
 
+		    if(!rg2fqwriters[rgTag]->singlei2.good()){      cerr<<"Cannot write to file "<<outdirsi2<<endl; return 1; }
+		    if(!rg2fqwriters[rgTag]->pairi2.good()){      cerr<<"Cannot write to file "<<outdiri2<<endl; return 1; }
+
 		    string outdirsi2f    = outdir+"rg_"+rgTag+".i2.fail.fq.gz";
 		    string outdiri2f     = outdir+"rg_"+rgTag+"_i2.fail.fq.gz";
 
 		    rg2fqwriters[rgTag]->singlei2f.open(outdirsi2f.c_str(), ios::out);
 		    rg2fqwriters[rgTag]->pairi2f.open(outdiri2f.c_str(), ios::out);
+
+		    if(!rg2fqwriters[rgTag]->singlei2f.good()){      cerr<<"Cannot write to file "<<outdirsi2f<<endl; return 1; }
+		    if(!rg2fqwriters[rgTag]->pairi2f.good()){      cerr<<"Cannot write to file "<<outdiri2f<<endl; return 1; }
+
 		}
 
 
 	    }
 
-	}else{
+	}else{//split RG
 
 	    if(firstRead){
 		string outdirs   = outdir+".fq.gz";
@@ -202,9 +246,18 @@ int main (int argc, char *argv[]) {
 		onereadgroup.pairr1.open(outdir1.c_str(), ios::out);
 		onereadgroup.pairr2.open(outdir2.c_str(), ios::out);
 
-		onereadgroup.singlef.open(outdirsf.c_str(), ios::out);
-		onereadgroup.pairr1f.open(outdir1f.c_str(), ios::out);
-		onereadgroup.pairr2f.open(outdir2f.c_str(), ios::out);
+		if(!onereadgroup.singlef.good()){      cerr<<"Cannot write to file "<<outdirsf<<endl; return 1; }
+		if(!onereadgroup.pairr1f.good()){      cerr<<"Cannot write to file "<<outdir1f<<endl; return 1; }
+		if(!onereadgroup.pairr2f.good()){      cerr<<"Cannot write to file "<<outdir2f<<endl; return 1; }
+
+
+		onereadgroup.single.open(outdirs.c_str(), ios::out);
+		onereadgroup.pairr1.open(outdir1.c_str(), ios::out);
+		onereadgroup.pairr2.open(outdir2.c_str(), ios::out);
+
+		if(!onereadgroup.singlef.good()){      cerr<<"Cannot write to file "<<outdirsf<<endl; return 1; }
+		if(!onereadgroup.pairr1f.good()){      cerr<<"Cannot write to file "<<outdir1f<<endl; return 1; }
+		if(!onereadgroup.pairr2f.good()){      cerr<<"Cannot write to file "<<outdir2f<<endl; return 1; }
 
 		if(i1present){
 
@@ -214,11 +267,19 @@ int main (int argc, char *argv[]) {
 		    onereadgroup.singlei1.open(outdirsi1.c_str(), ios::out);
 		    onereadgroup.pairi1.open(outdiri1.c_str(), ios::out);
 
+		    if(!onereadgroup.singlei1.good()){      cerr<<"Cannot write to file "<<outdirsi1<<endl; return 1; }
+		    if(!onereadgroup.pairi1.good()){      cerr<<"Cannot write to file "<<outdiri1<<endl; return 1; }
+
 		    string outdirsi1f   = outdir+".i1.fail.fq.gz";
 		    string outdiri1f     = outdir+"_i1.fail.fq.gz";
 
 		    onereadgroup.singlei1f.open(outdirsi1f.c_str(), ios::out);
 		    onereadgroup.pairi1f.open(outdiri1f.c_str(), ios::out);
+
+		    if(!onereadgroup.singlei1f.good()){      cerr<<"Cannot write to file "<<outdirsi1f<<endl; return 1; }
+		    if(!onereadgroup.pairi1f.good()){      cerr<<"Cannot write to file "<<outdiri1f<<endl; return 1; }
+
+
 		}
 
 		if(i2present){
@@ -229,11 +290,19 @@ int main (int argc, char *argv[]) {
 		    onereadgroup.singlei2.open(outdirsi2.c_str(), ios::out);
 		    onereadgroup.pairi2.open(outdiri2.c_str(), ios::out);
 
+		    if(!onereadgroup.singlei2.good()){      cerr<<"Cannot write to file "<<outdirsi2<<endl; return 1; }
+		    if(!onereadgroup.pairi2.good()){      cerr<<"Cannot write to file "<<outdiri2<<endl; return 1; }
+
 		    string outdirsi2f   = outdir+".i2.fail.fq.gz";
 		    string outdiri2f     = outdir+"_i2.fail.fq.gz";
 
 		    onereadgroup.singlei2f.open(outdirsi2f.c_str(), ios::out);
 		    onereadgroup.pairi2f.open(outdiri2f.c_str(), ios::out);
+
+		    if(!onereadgroup.singlei2f.good()){      cerr<<"Cannot write to file "<<outdirsi2f<<endl; return 1; }
+		    if(!onereadgroup.pairi2f.good()){      cerr<<"Cannot write to file "<<outdiri2f<<endl; return 1; }
+
+
 		}
 
 		firstRead=false;
@@ -242,12 +311,15 @@ int main (int argc, char *argv[]) {
 	}
 
 
+
+
+
 	if(al.IsPaired() ){
 	    if( al2Null ){
 		al2=al;
 		al2Null=false;
 		continue;
-	    }else{
+	    }else{ //is paired
 		if(al.Name != al2.Name ){
 		    cerr << "Seq#1 " <<al.Name <<" has a different id than seq #2 " <<al2.Name <<" exiting " << endl;
 		    return 1;
@@ -340,7 +412,7 @@ int main (int argc, char *argv[]) {
 		    }
 
 
-		}else{
+		}else{ //not splitrg
 		
 		    if(!al.IsFailedQC() && !al2.IsFailedQC() ){//read passed
 			onereadgroup.pairr2 <<"@"<< al.Name<<"/2" <<endl <<al.QueryBases<<endl<<"+"<<endl <<al.Qualities<<endl;
@@ -428,7 +500,9 @@ int main (int argc, char *argv[]) {
 		pairedreads++;
 	    }
 
-	}else{
+	}else{ //not paired
+
+
 	    if( al2Null ){
 
 
@@ -440,7 +514,8 @@ int main (int argc, char *argv[]) {
 			
 		    if(!al.IsFailedQC() ){//read passed
 			rg2fqwriters[rgTag]->single <<"@"<<al.Name<<endl<<al.QueryBases<<endl<<"+"<<endl<<al.Qualities<<endl;
-			    			    
+			
+
 			if(i1present){
 			    string i1stw;
 			    string i1qtw;
@@ -604,7 +679,7 @@ int main (int argc, char *argv[]) {
 		return 1;
 	    }
 
-	}
+	}//end of single-end
 	al2Null=true;
     }
 

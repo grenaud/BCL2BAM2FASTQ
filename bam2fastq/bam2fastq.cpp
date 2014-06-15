@@ -139,7 +139,7 @@ int main (int argc, char *argv[]) {
 	if(indexUnknown){
 	    i1present=al.HasTag("XI");
 	    i2present=al.HasTag("XJ");
-	    cerr<<i1present<<i2present<<endl;
+	    //cerr<<i1present<<i2present<<endl;
 	    indexUnknown=false;
 	}
 
@@ -173,7 +173,6 @@ int main (int argc, char *argv[]) {
 		rg2fqwriters[rgTag]->pairr1f.open(outdir1f.c_str(), ios::out);
 		rg2fqwriters[rgTag]->pairr2f.open(outdir2f.c_str(), ios::out);
 
-		if(!rg2fqwriters[rgTag]->single.good()){      cerr<<"Cannot write to file "<<outdirs<<endl; return 1; }
 
 
 		if(!rg2fqwriters[rgTag]->single.good()){      cerr<<"Cannot write to file "<<outdirs<<endl; return 1; }
@@ -246,14 +245,14 @@ int main (int argc, char *argv[]) {
 		onereadgroup.pairr1.open(outdir1.c_str(), ios::out);
 		onereadgroup.pairr2.open(outdir2.c_str(), ios::out);
 
-		if(!onereadgroup.singlef.good()){      cerr<<"Cannot write to file "<<outdirsf<<endl; return 1; }
-		if(!onereadgroup.pairr1f.good()){      cerr<<"Cannot write to file "<<outdir1f<<endl; return 1; }
-		if(!onereadgroup.pairr2f.good()){      cerr<<"Cannot write to file "<<outdir2f<<endl; return 1; }
+		if(!onereadgroup.single.good()){      cerr<<"Cannot write to file "<<outdirsf<<endl; return 1; }
+		if(!onereadgroup.pairr1.good()){      cerr<<"Cannot write to file "<<outdir1f<<endl; return 1; }
+		if(!onereadgroup.pairr2.good()){      cerr<<"Cannot write to file "<<outdir2f<<endl; return 1; }
 
 
-		onereadgroup.single.open(outdirs.c_str(), ios::out);
-		onereadgroup.pairr1.open(outdir1.c_str(), ios::out);
-		onereadgroup.pairr2.open(outdir2.c_str(), ios::out);
+		onereadgroup.singlef.open(outdirsf.c_str(), ios::out);
+		onereadgroup.pairr1f.open(outdir1f.c_str(), ios::out);
+		onereadgroup.pairr2f.open(outdir2f.c_str(), ios::out);
 
 		if(!onereadgroup.singlef.good()){      cerr<<"Cannot write to file "<<outdirsf<<endl; return 1; }
 		if(!onereadgroup.pairr1f.good()){      cerr<<"Cannot write to file "<<outdir1f<<endl; return 1; }

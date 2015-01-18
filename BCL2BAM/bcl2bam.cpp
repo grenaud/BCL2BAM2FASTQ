@@ -435,7 +435,7 @@ int main (int argc, char *argv[]) {
 	for(int tileIndex=0;tileIndex<int(tilesToUse.size());tileIndex++){ //for each tile
 	    // cerr<<"Processing tile #"<<tilesToUse[tileIndex]<<endl;
 
-	    fstream mybclfile [numberOfCycles];
+	    fstream * mybclfile= new fstream[numberOfCycles];
 	    unsigned int numberOfClustersFirst=0 ;
 
 	    //Opening the BCL files and opening file pointers

@@ -139,6 +139,8 @@ int main (int argc, char *argv[]) {
 			"\t\t"+"-t"+" " "--tiles"+"\t\t\t"+"Colon separated list of tiles to use ex:1112,3212 (default: all)\n"+
 			"\t\t"+"-s"+" " "--indexseq"+"\t\t\t"+"Only extract the subset of sequences with this string as first index (default: return everything)\n"+
 			"\t\t"+"--noflag"+"\t\t\t"+"Do not print a "+suffixFinishedFlag+" file when the program finished gracefully\n"+
+			"\t\t"+"-z"+"\t\t\t"+"(force) Do not exit if the number of cycles found is not the one that the user entered, just warn\n"+
+
 			"\n");
     
     if(argc == 1 ||
@@ -156,6 +158,7 @@ int main (int argc, char *argv[]) {
 	    suffixFinishedFlag=true;
             continue;
 	}
+
 	
 	if( (strcmp(argv[i],"-s") == 0) || (strcmp(argv[i],"--indexseq") == 0)  ){
 	    onlyIndex=true;
@@ -252,11 +255,12 @@ int main (int argc, char *argv[]) {
     // if(reverseCycles == -1 ){ cerr<<"The number of cycles for the reverse read must be specified"<<endl;    return 1;  }
     // if(index1Cycles  == -1 ){ cerr<<"The number of cycles for the first index must be specified"<<endl;    return 1;  }
     // if(index2Cycles  == 0 ){ cerr<<"The number of cycles for the second index must be specified"<<endl;    return 1;  }
+
     if(onlyIndex){
 	if(int(indexToExtract.length()) != index1Cycles){ cerr<<"The number of cycles for the first index is not equal to the size of the index you entered"<<endl;    return 1;  }
     }
     //parse cmd line arguments
-  
+
     bool isPairedEnd=false;
     if(reverseCycles > 0)
 	isPairedEnd=true;
@@ -737,7 +741,7 @@ int main (int argc, char *argv[]) {
 
 		    al.AlignmentFlag =  flagFirstPair;
 		    al2.AlignmentFlag =  flagSecondPair;
-
+		    
 		    if(onlyIndex ){
 			if(index1S[i] != indexToExtract)
 			    continue;
@@ -775,6 +779,11 @@ int main (int argc, char *argv[]) {
 		    al.SetIsMapped (false);
 		    al.SetIsPaired(false);
 		    al.AlignmentFlag =  flagSingleReads;
+
+		    if(onlyIndex ){			
+			if(index1S[i] != indexToExtract)
+			    continue;
+		    }
 
 		    if(index1Cycles != 0){
 			if(!al.AddTag("XI", "Z",string(index1S[i])) ) {cerr<<"Internal error, cannot add tag"<<endl; return 1; }

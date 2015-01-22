@@ -27,9 +27,17 @@ using namespace std;
 int main (int argc, char *argv[]) {
 
     string bamoutfile;
-    string index1    ="";
-    string index2    ="";
+    string index1     ="";
+    string index2     ="";
+    string index1q    ="";
+    string index2q    ="";
+
     bool hasSpeciedIndex=false;
+    bool hasSpeciedIndexFile =false;
+    bool hasSpeciedIndexFile2=false;
+
+    string index1filename;
+    string index2filename;
 
     string readgroup ="";
     bool isFasta=false;
@@ -50,13 +58,21 @@ int main (int argc, char *argv[]) {
         cout<<"\tMandatory:"<<endl;
         cout<<"\t\t-o [output bam]"<<endl;
         cout<<"\tOptional:"<<endl;
-        cout<<"\t\t-i1 [index1]"<<"\t\t"<<"Use this index sequence as the first  index field (XI)"<<endl;
-        cout<<"\t\t-i2 [index2]"<<"\t\t"<<"Use this index sequence as the second index field (XJ)"<<endl;
-        cout<<"\t\t-r  [read group]"<<endl;
         cout<<"\t\t-a  If input is fasta"<<endl;
 	cout<<"\t\t-q  [qual]"<<"\t\t"<<"If input is fasta, use this qual as the quality (Default : "+stringify(qualForFasta)+")"<<endl;
-        cout<<"\t\t-si Use the single index specified in the defline (as usually provided by Illumina)"<<endl;
-        cout<<"\t\t-di As above but for double index"<<endl;
+
+        cout<<"\n\t\tIndex options:"<<endl;
+	
+        cout<<"\t\t\t-if1 [file index1]"<<"\t\t"<<"Use this fastq file as first index sequence  (XI)"<<endl;
+        cout<<"\t\t\t-if2 [file index2]"<<"\t\t"<<"Use this fastq file as second index sequence (XJ)"<<endl;
+
+        cout<<"\t\t\t-i1 [index1 string]"<<"\t\t"<<"Use this index sequence as the first  index field (XI)"<<endl;
+        cout<<"\t\t\t-i2 [index2 string]"<<"\t\t"<<"Use this index sequence as the second index field (XJ)"<<endl;
+
+        cout<<"\t\t\t-r  [read group]"<<"\t\t"<<"Add this string as RG field"<<endl;
+
+        cout<<"\t\t\t-si Use the single index specified in the defline (as usually provided by Illumina)"<<endl;
+        cout<<"\t\t\t-di As above but for double index"<<endl;
 
         return 1;
     }
@@ -79,18 +95,38 @@ int main (int argc, char *argv[]) {
         }
 
 	if(strcmp(argv[i],"-i1") == 0  ){
-            index1=string(argv[i+1]);
+            index1  = string(argv[i+1]);
+	    index1q = string(index1.length(),char(qualForFasta+33));
+
             i++;
 	    hasSpeciedIndex=true;
             continue;
         }
 
 	if(strcmp(argv[i],"-i2") == 0  ){
-            index2=string(argv[i+1]);
+            index2  = string(argv[i+1]);
+	    index2q = string(index2.length(),char(qualForFasta+33));
+
 	    hasSpeciedIndex=true;
             i++;
             continue;
         }
+
+	if(strcmp(argv[i],"-if1") == 0  ){
+            index1filename=string(argv[i+1]);
+            i++;
+	    hasSpeciedIndexFile=true;
+            continue;
+        }
+
+	if(strcmp(argv[i],"-if2") == 0  ){
+	    index2filename=string(argv[i+1]);
+	    hasSpeciedIndexFile2=true;
+            i++;
+            continue;
+        }
+
+
 
 	if(strcmp(argv[i],"-r") == 0  ){
             readgroup=string(argv[i+1]);
@@ -143,7 +179,25 @@ int main (int argc, char *argv[]) {
 	cerr << "ERROR cannot specify options (-si or -di) and (-i1 or -i2)" << endl;
         return 1;
     }
+
     indexFromDefline = (singleIndexFromDefline || doubleIndexFromDefline);
+
+    if( (hasSpeciedIndexFile || hasSpeciedIndexFile2) &&
+	indexFromDefline){
+	cerr << "ERROR cannot specify index from the defline and specify index files at once" << endl;
+        return 1;
+    }
+
+    if( (!hasSpeciedIndexFile && hasSpeciedIndexFile2) ){
+	cerr << "ERROR cannot specify second index and not first" << endl;
+        return 1;
+    }
+
+    if( (hasSpeciedIndex && hasSpeciedIndexFile) ){
+	cerr << "ERROR cannot specify both index file and index from the command line" << endl;
+        return 1;
+    }
+    
 
     string fastqin1;
     string fastqin2;
@@ -185,6 +239,8 @@ int main (int argc, char *argv[]) {
 
     FastQParser * fqp1;
     FastQParser * fqp2;
+    FastQParser * fqpindx1;
+    FastQParser * fqpindx2;
 
     if(singleEndMode){
 	fqp1 = new FastQParser (fastqin1,isFasta);
@@ -193,13 +249,22 @@ int main (int argc, char *argv[]) {
 	fqp2 = new FastQParser (fastqin2,isFasta);
     }
 
+    if(hasSpeciedIndexFile){
+	fqpindx1      = new FastQParser (index1filename,isFasta);
+	if(hasSpeciedIndexFile2){
+	    fqpindx2  = new FastQParser (index2filename,isFasta);
+	}
+    }
+    
+
+
     unsigned int totalSeqs=0;
     while(fqp1->hasData()){
 
 	FastQObj * fo1=fqp1->getData();
 	vector<string> def1=allTokens( *(fo1->getID()), ' '  );
 	string def1s=def1[0];
-	
+
 	string ext1s;
 	if(indexFromDefline){
 	    if(def1.size() != 2){
@@ -212,10 +277,15 @@ int main (int argc, char *argv[]) {
 	// cout<<ext1s<<endl;
 
 	FastQObj * fo2;
+	FastQObj * foi1;
+	FastQObj * foi2;
+
+
 	string def2s;
 	string ext2s;
 
 	if(!singleEndMode){
+	    
 	    if(!fqp2->hasData()){
 		cerr << "ERROR: Discrepency between fastq files at record " <<  *(fo1->getID()) <<endl;
 		return 1;
@@ -233,6 +303,7 @@ int main (int argc, char *argv[]) {
 		ext2s=def2[1];
 	    }
 
+ 
 
 
 	    if(strEndsWith(def1s,"/1")){
@@ -255,6 +326,26 @@ int main (int argc, char *argv[]) {
 		return 1;
 	    }
 	}
+
+
+	if( hasSpeciedIndexFile ){
+	    if(!fqpindx1->hasData()){
+		cerr << "ERROR: Discrepency between fastq files at record " <<  *(fo1->getID()) <<endl;
+		return 1;
+	    }
+
+	    foi1=fqpindx1->getData();
+		
+	    if( hasSpeciedIndexFile2 ){
+		if(!fqpindx2->hasData()){
+		    cerr << "ERROR: Discrepency between fastq files at record " <<  *(fo1->getID()) <<endl;
+		    return 1;
+		}
+		    
+		foi2=fqpindx2->getData();
+	    }
+
+	}
 	// cout<<def1s<<endl;
 	// cout<<ext1s<<endl;
 
@@ -262,7 +353,8 @@ int main (int argc, char *argv[]) {
 	    vector<string> tokensSemiCol=allTokens( ext1s, ':' );
 	    
 	    if(singleIndexFromDefline){
-		index1 = tokensSemiCol[ tokensSemiCol.size() -1 ]; //last element should be the only index
+		index1  = tokensSemiCol[ tokensSemiCol.size() -1 ]; //last element should be the only index
+		index1q = string(index1.length(),char(qualForFasta+33));
 
 		for(unsigned int indexi=0;indexi<index1.size();indexi++){
 		    if( !isValidDNA( index1[ indexi ] ) ){
@@ -273,9 +365,12 @@ int main (int argc, char *argv[]) {
 	    }
 
 	    if(doubleIndexFromDefline){
-		index1 = tokensSemiCol[ tokensSemiCol.size() -2 ]; //second to last element should be the second index
-		index2 = tokensSemiCol[ tokensSemiCol.size() -2 ]; //          last element should be the first index
+		index1  = tokensSemiCol[ tokensSemiCol.size() -2 ];             // second to last element should be the second index
+		index1q = string(index1.length(),char(qualForFasta+33));
 
+		index2  = tokensSemiCol[ tokensSemiCol.size() -2 ];             // last element should be the first index
+		index2q = string(index2.length(),char(qualForFasta+33));
+		
 		for(unsigned int indexi=0;indexi<index1.size();indexi++){
 		    if( !isValidDNA( index1[ indexi ] ) ){
 			cerr << "ERROR: index found for " << index1 <<" in sequence "<<def1s<<" is not a valid DNA sequence" <<endl;
@@ -293,7 +388,22 @@ int main (int argc, char *argv[]) {
 
 	    }
 	    
+	}//end index from defline
+
+
+	if( hasSpeciedIndexFile ){	    
+
+	    index1      = *(foi1->getSeq());
+	    index1q     = *(foi1->getQual());
+
+	    if( hasSpeciedIndexFile2 ){		
+		index2  = *(foi2->getSeq());
+		index2q = *(foi2->getQual());		
+	    }
+	}else{
+	    
 	}
+
 	// cout<<def1s<<endl;
 	// cout<<ext1s<<endl;
 
@@ -331,27 +441,27 @@ int main (int argc, char *argv[]) {
 
 	//add tags for indices and fake qualities for the indices
 	if(!index1.empty()){
-	    if(!toWrite1.AddTag("XI", "Z",index1) )                      {                           cerr<<"Internal error, cannot add tag"<<endl; return 1; }
-	    if(!toWrite1.AddTag("YI", "Z",string(index1.length(),char(qualForFasta+33))) ) {        cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+	    if(!toWrite1.AddTag("XI", "Z",index1) ) {        cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+	    if(!toWrite1.AddTag("YI", "Z",index1q)) {        cerr<<"Internal error, cannot add tag"<<endl; return 1; }
 	    if(!singleEndMode){
-		if(!toWrite2.AddTag("XI", "Z",index1) )                      {                       cerr<<"Internal error, cannot add tag"<<endl; return 1; }
-		if(!toWrite2.AddTag("YI", "Z",string(index1.length(),char(qualForFasta+33))) ) {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+		if(!toWrite2.AddTag("XI", "Z",index1)  ) {   cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+		if(!toWrite2.AddTag("YI", "Z",index1q) ) {   cerr<<"Internal error, cannot add tag"<<endl; return 1; }
 	    }
 	}
 
 	if(!index2.empty()){
-	    if(!toWrite1.AddTag("XJ", "Z",index2) )                      {                           cerr<<"Internal error, cannot add tag"<<endl; return 1; }
-	    if(!toWrite1.AddTag("YJ", "Z",string(index2.length(),char(qualForFasta+33))) ) {        cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+	    if(!toWrite1.AddTag("XJ", "Z",index2)  ) {       cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+	    if(!toWrite1.AddTag("YJ", "Z",index2q) ) {       cerr<<"Internal error, cannot add tag"<<endl; return 1; }
 	    if(!singleEndMode){
-		if(!toWrite2.AddTag("XJ", "Z",index2) )                      {                       cerr<<"Internal error, cannot add tag"<<endl; return 1; }
-		if(!toWrite2.AddTag("YJ", "Z",string(index2.length(),char(qualForFasta+33))) ) {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+		if(!toWrite2.AddTag("XJ", "Z",index2) ) {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+		if(!toWrite2.AddTag("YJ", "Z",index2q)) {    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
 	    }
 	}
 
 	if(!readgroup.empty()){
-	    if(!toWrite1.AddTag("RG", "Z",readgroup) )                      {                        cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+	    if(!toWrite1.AddTag("RG", "Z",readgroup) )     {  cerr<<"Internal error, cannot add tag"<<endl; return 1; }
 	    if(!singleEndMode){
-		if(!toWrite2.AddTag("RG", "Z",readgroup) )                      {                    cerr<<"Internal error, cannot add tag"<<endl; return 1; }
+		if(!toWrite2.AddTag("RG", "Z",readgroup) ) {  cerr<<"Internal error, cannot add tag"<<endl; return 1; }
 	    }
 	}
 
@@ -369,6 +479,15 @@ int main (int argc, char *argv[]) {
     if(!singleEndMode){
 	delete fqp2;
     }
+
+    if(hasSpeciedIndexFile){
+	delete fqpindx1;
+	if(hasSpeciedIndexFile2){
+	    delete fqpindx2;
+	}
+    }
+
+
     
     writer.Close();
 

@@ -14,6 +14,7 @@
 #include <cstring>
 #include <math.h>
 #include <algorithm>
+#include <errno.h>
 
 #include "api/BamMultiReader.h"
 #include "api/BamReader.h"
@@ -27,11 +28,12 @@
 using namespace std;
 using namespace BamTools;
 
+
 //constants taken from http://www.umanitoba.ca/afs/Plant_Science/psgendb/local/pkg/CASAVA_v1.8.2/src/c++/include/alignment/BclReader.hh
-static const int blockSize = 25;
-static const int imageWidth = 2048;
+static const int blockSize      = 25;
+static const int imageWidth     = 2048;
 static const int blocksPerlLine = (imageWidth + blockSize - 1) / blockSize;
-static const int imageHeight = 20000;
+static const int imageHeight    = 20000;
 
 const uint32_t flagSingleReads =  4; // 00000100
 const uint32_t flagFirstPair   = 77; // 01001101
@@ -450,7 +452,7 @@ int main (int argc, char *argv[]) {
 		
 		    mybclfile[cycle-1].open(bclFile.c_str(),ios::in|ios::binary);
 		    if (!mybclfile[cycle-1]) {
-			cerr<<"Unable to read file "<<bclFile<<endl;
+			cerr<<"Unable to read BCL file "<<bclFile<<" "<<strerror(errno)<<endl;
 			return 1;
 		    }
 		    
@@ -559,7 +561,7 @@ int main (int argc, char *argv[]) {
 			unsigned long totalClusters=0;
 			fstream myclocsfile (posFile.c_str(),ios::in|ios::binary);
 			if (!myclocsfile) {
-			    cout<<"Unable to read file "<<argv[1]<<endl;
+			    cout<<"Unable to read position file "<<posFile<<" "<<strerror(errno)<<endl;
 			}
 			char toread;
 			myclocsfile.read(&toread,sizeof(char)); //version
@@ -809,6 +811,13 @@ int main (int argc, char *argv[]) {
 		// cout<<forwardQ[i]<<endl;
 	    }
 
+
+
+
+	    //closing the BCL files
+	    for(int cycle=1;cycle<=numberOfCycles;cycle++){ //for each cycle
+		mybclfile[cycle-1].close();
+	    }
 
 
 	    //deallocating memory

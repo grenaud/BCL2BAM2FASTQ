@@ -51,6 +51,90 @@ typedef struct {
 
 
 
+inline void reverseCstr(char * inputString,int sizeS){
+    char  tempbuffer [sizeS-1];
+
+    if(sizeS >1 ){	
+
+	for(int i=(sizeS-1);i>=1;i--){
+	    
+	    tempbuffer[sizeS-1-i] =( inputString[i-1] );
+	    // cout<<"tempbuffer["<<(sizeS-1-i)<<"]  inputString["<<i-1<<"] )\t"<< inputString[i-1]<<endl;
+	}
+
+	for(int i=0;i<(sizeS-1);i++){	    
+	    inputString[i]  = tempbuffer[i];
+	    // cout<<"tempbuffer["<<(i)<<"] \t( inputString["<<i<<"] )"<<tempbuffer[i]<<endl;
+	}
+	inputString[sizeS-1]='\0';
+	// cout<<string(inputString)<<endl;
+    }
+    //    return toReturn;
+}
+
+
+inline char complementBase(const char c){
+    if(c ==    'A')
+	return 'T';
+
+    if(c ==    'C')
+	return 'G';
+
+    if(c ==    'G')
+	return 'C';
+
+    if(c ==    'T')
+	return 'A';
+
+    if(c ==    'N')
+	return 'N';
+
+
+    if(c ==    'a')
+	return 't';
+
+    if(c ==    'c')
+	return 'g';
+
+    if(c ==    'g')
+	return 'c';
+
+    if(c ==    't')
+	return 'a';
+
+
+
+
+    if(c ==    'n')
+	return 'n';
+
+    cerr<<"Complement: Invalid base pair="<<c<<endl;
+    exit(1);
+}
+
+
+
+inline void reverseCstrRC(char * inputString,int sizeS){
+    char  tempbuffer [sizeS-1];
+
+    if(sizeS >1 ){	
+
+	for(int i=(sizeS-1);i>=1;i--){
+	    
+	    tempbuffer[sizeS-1-i] =complementBase( inputString[i-1] );
+	    // cout<<"tempbuffer["<<(sizeS-1-i)<<"]  inputString["<<i-1<<"] )\t"<< inputString[i-1]<<endl;
+	}
+
+	for(int i=0;i<(sizeS-1);i++){	    
+	    inputString[i]  = tempbuffer[i];
+	    // cout<<"tempbuffer["<<(i)<<"] \t( inputString["<<i<<"] )"<<tempbuffer[i]<<endl;
+	}
+	inputString[sizeS-1]='\0';
+	// cout<<string(inputString)<<endl;
+    }
+    //    return toReturn;
+}
+
 
 typedef struct { 
     char baseC;
@@ -113,6 +197,7 @@ int main (int argc, char *argv[]) {
     string bclDirectory   = "";
     string bamfiletowrite = "";
     bool onlyIndex=false;
+    bool fiir=false; //if the order was forward, i1, i2 and reverse
 
     bool noFinishedFlag=false;
     string suffixFinishedFlag=".finished";
@@ -136,6 +221,9 @@ int main (int argc, char *argv[]) {
 			"\t\t"+"-o"+" " "--outbam"+"\t\t\t"+"output file (BAM format)  (default: none)\n"+
 			
 			"\tOptional:\n"+
+			"\t\t"+""+" "+"--fiir"+"\t\t\t"+"If the run was forward, i1, i2 (reverse) we also rev. comp. i2  \n"+
+			"\t\t"+""+" "+""+"\t\t\t"+"The default is : forward, i1, reverse, i2 \n"+
+
 			"\t\t"+"-e"+" " "--exp"+"\t\t\t"+"Name of experiment (default: "+nameOfExperiment+")\n"+
 			"\t\t"+"-l"+" " "--lanes"+"\t\t\t"+"Colon separated list of lanes to use ex:1,3 (default: all)\n"+
 			"\t\t"+"-t"+" " "--tiles"+"\t\t\t"+"Colon separated list of tiles to use ex:1112,3212 (default: all)\n"+
@@ -158,6 +246,11 @@ int main (int argc, char *argv[]) {
 
 	if( (strcmp(argv[i],"--noflag") == 0)  ){
 	    suffixFinishedFlag=true;
+            continue;
+	}
+
+	if( (strcmp(argv[i],"--fiir") == 0)  ){
+	    fiir=true;
             continue;
 	}
 
@@ -257,6 +350,10 @@ int main (int argc, char *argv[]) {
     // if(reverseCycles == -1 ){ cerr<<"The number of cycles for the reverse read must be specified"<<endl;    return 1;  }
     // if(index1Cycles  == -1 ){ cerr<<"The number of cycles for the first index must be specified"<<endl;    return 1;  }
     // if(index2Cycles  == 0 ){ cerr<<"The number of cycles for the second index must be specified"<<endl;    return 1;  }
+    if(fiir){
+	 if(index1Cycles  == 0 ){ cerr<<"The number of cycles for the first index must be specified when --fiir is used"<<endl;    return 1;  }
+	 if(index2Cycles  == 0 ){ cerr<<"The number of cycles for the second index must be specified when --fiir is used"<<endl;    return 1;  }
+    }
 
     if(onlyIndex){
 	if(int(indexToExtract.length()) != index1Cycles){ cerr<<"The number of cycles for the first index is not equal to the size of the index you entered"<<endl;    return 1;  }
@@ -342,7 +439,9 @@ int main (int argc, char *argv[]) {
 	    break;
 	}
     }
+
     cerr<<"Found "<<numberOfCycles<<" cycles"<<endl;
+
     if(numberOfCycles != (forwardCycles +  reverseCycles + index1Cycles + index2Cycles)){
 	
 	cerr<<"The total number of cycles specified "<<(forwardCycles +  reverseCycles + index1Cycles + index2Cycles)<<" does not correspond to the total number of cycles detected "<<numberOfCycles<<endl;
@@ -358,24 +457,46 @@ int main (int argc, char *argv[]) {
     //mark every cycle as being forward, reverse, index1, index2
     //not the sexiest C++ code but should work
     char cycleCode [numberOfCycles];
-    for(int i=0;i<forwardCycles;i++){
-	cycleCode[i]='f';
-    }
+    if(fiir){
+	for(int i=0;i<forwardCycles;i++){
+	    cycleCode[i]='f';
+	}
 
-    for(int i=forwardCycles;i<(forwardCycles+index1Cycles);i++){
-	cycleCode[i]='i';
-    }
+	for(int i=forwardCycles;i<(forwardCycles+index1Cycles);i++){
+	    cycleCode[i]='i';
+	}
 
-    for(int i=(forwardCycles+index1Cycles);i<(forwardCycles+index1Cycles+reverseCycles);i++){
-	cycleCode[i]='r';
-    }
+	for(int i=(forwardCycles+index1Cycles);i<(forwardCycles+index1Cycles+index2Cycles);i++){
+	    cycleCode[i]='j';
+	}
     
-    for(int i=(forwardCycles+index1Cycles+reverseCycles);i<(forwardCycles+index1Cycles+reverseCycles+index2Cycles);i++){
-	cycleCode[i]='j';
+	for(int i=(forwardCycles+index1Cycles+index2Cycles);i<(forwardCycles+index1Cycles+index2Cycles+reverseCycles);i++){
+	    cycleCode[i]='r';
+	}
+
+    }else{
+	for(int i=0;i<forwardCycles;i++){
+	    cycleCode[i]='f';
+	}
+
+	for(int i=forwardCycles;i<(forwardCycles+index1Cycles);i++){
+	    cycleCode[i]='i';
+	}
+
+	for(int i=(forwardCycles+index1Cycles);i<(forwardCycles+index1Cycles+reverseCycles);i++){
+	    cycleCode[i]='r';
+	}
+    
+	for(int i=(forwardCycles+index1Cycles+reverseCycles);i<(forwardCycles+index1Cycles+reverseCycles+index2Cycles);i++){
+	    cycleCode[i]='j';
+	}
     }
     // cout<<cycle<<endl;
     // return 1;
-
+    // for(int i=(0);i<(numberOfCycles);i++){
+    // 	cout<<i<<"\t"<<cycleCode[i]<<endl;
+    // }
+    // return 1;
 
 
     //DETECTING TILE "ARRANGEMENT"
@@ -677,15 +798,21 @@ int main (int argc, char *argv[]) {
 		    ptr2vectorQ=&index1Q;
 		    cycleToUse=cycle-forwardCycles;
 		    break;
-		case 'r':
+		case 'r': //reverse
 		    ptr2vectorS=&reverseS;
 		    ptr2vectorQ=&reverseQ;
-		    cycleToUse=cycle-forwardCycles-index1Cycles;
+		    if(fiir)
+			cycleToUse=cycle-forwardCycles-index1Cycles-index2Cycles;
+		    else
+			cycleToUse=cycle-forwardCycles-index1Cycles;
 		    break;
-		case 'j':
+		case 'j': //i2
 		    ptr2vectorS=&index2S;
 		    ptr2vectorQ=&index2Q;
-		    cycleToUse=cycle-forwardCycles-index1Cycles-reverseCycles;
+		    if(fiir)
+			cycleToUse=cycle-forwardCycles-index1Cycles;
+		    else
+			cycleToUse=cycle-forwardCycles-index1Cycles-reverseCycles;
 		    break;
 		default:
 		    cerr<<"Internal error, unable to determine cycle type"<<endl;
@@ -718,8 +845,24 @@ int main (int argc, char *argv[]) {
 		reverseQ[i][reverseCycles]='\0';
 		index1Q[i][index1Cycles]='\0';
 		index2Q[i][index2Cycles]='\0';
+
+		if(fiir){
+		    // cout<<"init"<<endl;
+		    // cout<<string(index2S[i])<<endl;		    
+		    // cout<<string(index2Q[i])<<endl;
+
+		    reverseCstrRC( index2S[i], index2Cycles+1);
+		    reverseCstr( index2Q[i], index2Cycles+1);
+
+		    // cout<<string(index2S[i])<<endl;		    
+		    // cout<<string(index2Q[i])<<endl;
+
+		    
+		}
+
 	    }
 
+	   
 	    for(unsigned int i=0;i<numberOfClustersFirst;i++){
 		
 		BamAlignment  al;

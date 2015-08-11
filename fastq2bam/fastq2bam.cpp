@@ -48,6 +48,9 @@ int main (int argc, char *argv[]) {
     bool singleEndMode=false;
     int qualForFasta=0;
 
+    bool qualScoresCapBool=false;
+    int qualScoresCap=60;
+
     if( (argc== 1) ||
         (argc== 2 && string(argv[1]) == "-h") ||
         (argc== 2 && string(argv[1]) == "-help") ||
@@ -60,6 +63,7 @@ int main (int argc, char *argv[]) {
         cout<<"\tOptional:"<<endl;
         cout<<"\t\t-a  If input is fasta"<<endl;
 	cout<<"\t\t-q  [qual]"<<"\t\t"<<"If input is fasta, use this qual as the quality (Default : "+stringify(qualForFasta)+")"<<endl;
+	cout<<"\t\t-m  [qual]"<<"\t\t"<<"Cap quality scores at this value (Default : "+stringify(qualScoresCapBool)+")"<<endl;
 
         cout<<"\n\t\tIndex options:"<<endl;
 	
@@ -69,7 +73,6 @@ int main (int argc, char *argv[]) {
         cout<<"\t\t\t-i1 [index1 string]"<<"\t\t"<<"Use this index sequence as the first  index field (XI)"<<endl;
         cout<<"\t\t\t-i2 [index2 string]"<<"\t\t"<<"Use this index sequence as the second index field (XJ)"<<endl;
 
-        cout<<"\t\t\t-r  [read group]"<<"\t\t"<<"Add this string as RG field"<<endl;
 
         cout<<"\t\t\t-si Use the single index specified in the defline (as usually provided by Illumina)"<<endl;
         cout<<"\t\t\t-di As above but for double index"<<endl;
@@ -84,6 +87,14 @@ int main (int argc, char *argv[]) {
 	if(strcmp(argv[i],"-o") == 0  ){
             bamoutfile=string(argv[i+1]);
             i++;
+            continue;
+        }
+
+	if(strcmp(argv[i],"-m") == 0  ){
+            qualScoresCapBool=true;
+	    qualScoresCap=destringify<int>(argv[i+1]);
+            i++;
+
             continue;
         }
 
@@ -437,7 +448,25 @@ int main (int argc, char *argv[]) {
 		toWrite2.Qualities  =  *(fo2->getQual());
 	}
 	
-	
+	if(qualScoresCapBool){
+
+	    for(unsigned int indexS=0;indexS<toWrite1.Qualities.size();indexS++){
+		toWrite1.Qualities[indexS] = char ( min(qualScoresCap, int(toWrite1.Qualities[indexS])-33) +33) ;
+	    }
+
+	    for(unsigned int indexS=0;indexS<toWrite2.Qualities.size();indexS++){
+		toWrite2.Qualities[indexS] = char ( min(qualScoresCap, int(toWrite2.Qualities[indexS])-33) +33) ;
+	    }
+
+	    for(unsigned int indexS=0;indexS<index1q.size();indexS++){
+		index1q[indexS]            = char ( min(qualScoresCap, int(index1q[indexS])-33) +33) ;
+	    }	
+
+	    for(unsigned int indexS=0;indexS<index2q.size();indexS++){
+		index2q[indexS]            = char ( min(qualScoresCap, int(index2q[indexS])-33) +33) ;
+	    }	
+
+	}
 
 	//add tags for indices and fake qualities for the indices
 	if(!index1.empty()){

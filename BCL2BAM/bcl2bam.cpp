@@ -605,7 +605,7 @@ int main (int argc, char *argv[]) {
 	    //POS FILE
 	    posFile=pathToPositionFiles+"/s_"+ stringify(lanesToUse[laneIndex]) +"_"+zeroPad(tilesToUse[tileIndex],4)+"_pos.txt";
 	    if(isFile(posFile)){
-		//cout<<"exists "<<posFile<<endl;
+		//cerr<<"exists "<<posFile<<endl;
 		ifstream myFile;
 		string line;
 
@@ -675,7 +675,7 @@ int main (int argc, char *argv[]) {
 		}else{
 		    //checking clocs
 		    posFile=pathToPositionFiles+"/L00"+ stringify(lanesToUse[laneIndex]) +"/s_"+stringify(lanesToUse[laneIndex])+"_"+stringify(tilesToUse[tileIndex])+".clocs";
-		    // cout<<posFile<<endl;
+		    //cerr<<posFile<<endl;
 		    if(isFile(posFile)){
 			
 
@@ -758,30 +758,47 @@ int main (int argc, char *argv[]) {
 	    vector<char *> index1Q;
 	    vector<char *> index2Q;
 
-
 	    
 	    for(unsigned int i=0;i<numberOfClustersFirst;i++){
-		char * forwardST=new char[forwardCycles+1];
-		char * reverseST=new char[reverseCycles+1];
-		char * index1ST =new char [index1Cycles+1];
-		char * index2ST =new char[index2Cycles+1];
+
+		char * forwardST;
+		char * reverseST;
+		char * index1ST ;
+		char * index2ST ;
+	
+		char * forwardQT;
+		char * reverseQT;
+		char * index1QT ;
+		char * index2QT ;
+
+		try{
+		    forwardST = new char[forwardCycles+1];
+		    reverseST = new char[reverseCycles+1];
+		    index1ST  = new char [index1Cycles+1];
+		    index2ST  = new char[index2Cycles+1];
+	
+		    forwardQT = new char[forwardCycles+1];
+		    reverseQT = new char[reverseCycles+1];
+		    index1QT  = new char[index1Cycles+1];
+		    index2QT  = new char[index2Cycles+1];
+		}catch(bad_alloc& ba){
+		    cerr << "Cannot allocate memory: " << ba.what() <<" try a machine with more RAM"<<endl;
+		    return 1;
+		}
 		forwardS.push_back(forwardST);
 		reverseS.push_back(reverseST);
-		index1S.push_back(index1ST);
-		index2S.push_back(index2ST);
+		index1S.push_back( index1ST  );
+		index2S.push_back( index2ST  );
 
-		char * forwardQT=new char[forwardCycles+1];
-		char * reverseQT=new char[reverseCycles+1];
-		char * index1QT=new char[index1Cycles+1];
-		char * index2QT=new char[index2Cycles+1];
 		forwardQ.push_back(forwardQT);
 		reverseQ.push_back(reverseQT);
-		index1Q.push_back(index1QT);
-		index2Q.push_back(index2QT);
+		index1Q.push_back( index1QT  );
+		index2Q.push_back( index2QT  );
+
 	    }
 
 
-
+	    
 	    for(int cycle=0;cycle<numberOfCycles;cycle++){ //for each cycle
 		vector<char *> * ptr2vectorS;
 		vector<char *> * ptr2vectorQ;
@@ -834,6 +851,7 @@ int main (int argc, char *argv[]) {
       
 	    }
 
+
 	    //capping the char *
 	    for(unsigned int i=0;i<numberOfClustersFirst;i++){
 		forwardS[i][forwardCycles]='\0';
@@ -864,7 +882,7 @@ int main (int argc, char *argv[]) {
 
 	   
 	    for(unsigned int i=0;i<numberOfClustersFirst;i++){
-		
+
 		BamAlignment  al;
 		BamAlignment al2; //reverse read
 
@@ -990,6 +1008,7 @@ int main (int argc, char *argv[]) {
 	fileoutFlag<<""<<endl;
 	fileoutFlag.close();
     }
+    cerr<<"Program "<<argv[0]<<" terminated gracefully"<<endl;
 
     return 0;
 }

@@ -47,8 +47,11 @@ int main (int argc, char *argv[]) {
 
     bool singleEndMode=false;
     int qualForFasta=0;
+    int qualForIndices=0;
 
     bool qualScoresCapBool=false;
+    bool baseQual64       =false;
+    
     int qualScoresCap=60;
 
     if( (argc== 1) ||
@@ -63,7 +66,12 @@ int main (int argc, char *argv[]) {
         cout<<"\tOptional:"<<endl;
         cout<<"\t\t-a  If input is fasta"<<endl;
 	cout<<"\t\t-q  [qual]"<<"\t\t"<<"If input is fasta, use this qual as the quality (Default : "+stringify(qualForFasta)+")"<<endl;
+	cout<<"\t\t-qi  [qual]"<<"\t\t"<<"Value for indices quality scores if the qual scores are missing (Default : "+stringify(qualForIndices)+")"<<endl;
+	
 	cout<<"\t\t-m  [qual]"<<"\t\t"<<"Cap quality scores at this value (Default : "+stringify(qualScoresCapBool)+")"<<endl;
+
+	cout<<"\t\t-b64  [qual]"<<"\t\t"<<"Quality scores are on the 64 offset instead of 33 (Default : "+boolStringify(baseQual64)+")"<<endl;
+
 
         cout<<"\n\t\tIndex options:"<<endl;
 	
@@ -82,6 +90,7 @@ int main (int argc, char *argv[]) {
 
     int lastIndex=1;
     bool specifiedQual=false;
+    bool specifiedQualIndices=false;
 
     for(int i=1;i<(argc);i++){
 	if(strcmp(argv[i],"-o") == 0  ){
@@ -94,14 +103,26 @@ int main (int argc, char *argv[]) {
             qualScoresCapBool=true;
 	    qualScoresCap=destringify<int>(argv[i+1]);
             i++;
-
             continue;
         }
 
+	if(strcmp(argv[i],"-b64") == 0  ){
+            baseQual64=true;
+            continue;
+        }
+
+	
 	if(strcmp(argv[i],"-q") == 0  ){
             qualForFasta=destringify<int>(argv[i+1]);
             i++;
 	    specifiedQual=true;
+            continue;
+        }
+
+	if(strcmp(argv[i],"-qi") == 0  ){
+            qualForIndices=destringify<int>(argv[i+1]);
+            i++;
+	    specifiedQualIndices=true;
             continue;
         }
 
@@ -279,10 +300,26 @@ int main (int argc, char *argv[]) {
 	string ext1s;
 	if(indexFromDefline){
 	    if(def1.size() != 2){
-		cerr << "ERROR: The following record does not have 2 fields for index assignment " <<  *(fo1->getID()) <<endl;
-		return 1;
+		vector<string> def1WithPound=allTokens( *(fo1->getID()), '#'  );
+		if(def1WithPound.size() != 2){
+		    cerr << "ERROR: The following record does not have 2 fields for index assignment " <<  *(fo1->getID()) <<endl;
+		    return 1;
+		}
+
+		def1s=def1WithPound[0];
+		ext1s=def1WithPound[1];
+		
+		if(strEndsWith(ext1s,"/1")){
+		    ext1s=ext1s.substr(0,ext1s.size()-2);
+		}
+
+		//cout<<ext1s<<endl;
+		// return 1;
+
+		
+	    }else{
+		ext1s=def1[1];
 	    }
-	    ext1s=def1[1];
 	}
 	// cout<<def1s<<endl;
 	// cout<<ext1s<<endl;
@@ -308,10 +345,19 @@ int main (int argc, char *argv[]) {
 
 	    if(indexFromDefline){
 		if(def2.size() != 2){
-		    cerr << "ERROR: The following record does not have 2 fields for index assignment " <<  *(fo2->getID()) <<endl;
-		    return 1;
+		    vector<string> def2WithPound=allTokens( *(fo2->getID()), '#'  );
+		    if(def2WithPound.size() != 2){
+			cerr << "ERROR: The following record does not have 2 fields for index assignment " <<  *(fo2->getID()) <<endl;
+			return 1;
+		    }
+
+		    def2s=def2WithPound[0];
+		    ext2s=def2WithPound[1];
+		    // cerr << "ERROR: The following record does not have 2 fields for index assignment " <<  *(fo2->getID()) <<endl;
+		    // return 1;
+		}else{
+		    ext2s=def2[1];
 		}
-		ext2s=def2[1];
 	    }
 
  
@@ -334,6 +380,7 @@ int main (int argc, char *argv[]) {
 
 	    if(def1s != def2s){
 		cerr << "ERROR: Discrepency between fastq files, different names " << *(fo1->getID()) <<" and "<< *(fo2->getID()) <<endl;
+		cerr << " we tried names " << def1s <<" and "<< def2s <<endl;
 		return 1;
 	    }
 	}
@@ -365,7 +412,7 @@ int main (int argc, char *argv[]) {
 	    
 	    if(singleIndexFromDefline){
 		index1  = tokensSemiCol[ tokensSemiCol.size() -1 ]; //last element should be the only index
-		index1q = string(index1.length(),char(qualForFasta+33));
+		index1q = string(index1.length(),char(qualForIndices+33));
 
 		for(unsigned int indexi=0;indexi<index1.size();indexi++){
 		    if( !isValidDNA( index1[ indexi ] ) ){
@@ -377,10 +424,10 @@ int main (int argc, char *argv[]) {
 
 	    if(doubleIndexFromDefline){
 		index1  = tokensSemiCol[ tokensSemiCol.size() -2 ];             // second to last element should be the second index
-		index1q = string(index1.length(),char(qualForFasta+33));
+		index1q = string(index1.length(),char(qualForIndices+33));
 
 		index2  = tokensSemiCol[ tokensSemiCol.size() -2 ];             // last element should be the first index
-		index2q = string(index2.length(),char(qualForFasta+33));
+		index2q = string(index2.length(),char(qualForIndices+33));
 		
 		for(unsigned int indexi=0;indexi<index1.size();indexi++){
 		    if( !isValidDNA( index1[ indexi ] ) ){
@@ -429,6 +476,17 @@ int main (int argc, char *argv[]) {
 	    toWrite1.Qualities  =  string(toWrite1.QueryBases.length(),char(qualForFasta+33));	
 	}else{
 	    toWrite1.Qualities  =  *(fo1->getQual());
+	    if(baseQual64){
+		for(unsigned int indexS=0;indexS<toWrite1.Qualities.size();indexS++){
+		    // cerr<<toWrite1.Qualities[indexS]<<endl;
+		    // cerr<<int(toWrite1.Qualities[indexS])<<endl;
+		    // cerr<< ( (int(toWrite1.Qualities[indexS])-31) ) <<endl;
+		    // cerr<< char( (int(toWrite1.Qualities[indexS])-31) ) <<endl;
+		    
+		    toWrite1.Qualities[indexS] = char ( (int(toWrite1.Qualities[indexS])-31) ) ; //-64+33 = 31
+		    //return 1;
+		}
+	    }
 	}
 
 
@@ -444,9 +502,16 @@ int main (int argc, char *argv[]) {
 
 	    if(isFasta)
 		toWrite2.Qualities  =  string(toWrite2.QueryBases.length(),char(qualForFasta+33));
-	    else
+	    else{
 		toWrite2.Qualities  =  *(fo2->getQual());
+		if(baseQual64){
+		    for(unsigned int indexS=0;indexS<toWrite2.Qualities.size();indexS++){
+			toWrite2.Qualities[indexS] = char ( (int(toWrite2.Qualities[indexS])-31) ) ; //-64+33 = 31
+		    }
+		}
+	    }
 	}
+
 	
 	if(qualScoresCapBool){
 

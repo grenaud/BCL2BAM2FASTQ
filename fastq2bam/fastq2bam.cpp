@@ -47,7 +47,8 @@ int main (int argc, char *argv[]) {
 
     bool singleEndMode=false;
     int qualForFasta=0;
-    int qualForIndices=0;
+    int qualForIndices          =30;
+    int qualForIndicesUnresolved=0;
 
     bool qualScoresCapBool=false;
     bool baseQual64       =false;
@@ -66,7 +67,10 @@ int main (int argc, char *argv[]) {
         cout<<"\tOptional:"<<endl;
         cout<<"\t\t-a  If input is fasta"<<endl;
 	cout<<"\t\t-q  [qual]"<<"\t\t"<<"If input is fasta, use this qual as the quality (Default : "+stringify(qualForFasta)+")"<<endl;
-	cout<<"\t\t-qi  [qual]"<<"\t\t"<<"Value for indices quality scores if the qual scores are missing (Default : "+stringify(qualForIndices)+")"<<endl;
+
+
+	cout<<"\t\t-qi  [qual]"<<"\t\t"<<"Value for index PHRED quality scores if the qual scores are missing (Default : "+stringify(qualForIndices)+")"<<endl;
+	cout<<"\t\t-qui  [qual]"<<"\t\t"<<"Value for index PHRED quality scores for unresolved bases N  (Default : "+stringify(qualForIndicesUnresolved)+")"<<endl;
 	
 	cout<<"\t\t-m  [qual]"<<"\t\t"<<"Cap quality scores at this value (Default : "+stringify(qualScoresCapBool)+")"<<endl;
 
@@ -91,6 +95,7 @@ int main (int argc, char *argv[]) {
     int lastIndex=1;
     bool specifiedQual=false;
     bool specifiedQualIndices=false;
+    bool specifiedQualIndicesU=false;
 
     for(int i=1;i<(argc);i++){
 	if(strcmp(argv[i],"-o") == 0  ){
@@ -123,6 +128,13 @@ int main (int argc, char *argv[]) {
             qualForIndices=destringify<int>(argv[i+1]);
             i++;
 	    specifiedQualIndices=true;
+            continue;
+        }
+
+	if(strcmp(argv[i],"-qui") == 0  ){
+	    qualForIndicesUnresolved=destringify<int>(argv[i+1]);
+            i++;
+	    specifiedQualIndicesU=true;
             continue;
         }
 
@@ -185,6 +197,8 @@ int main (int argc, char *argv[]) {
 	break;
     }
 
+
+    
     if( (specifiedQual && !isFasta) ){
 	cerr << "Cannot specify quality if you do not use fasta" << endl;
         return 1;
@@ -230,6 +244,11 @@ int main (int argc, char *argv[]) {
         return 1;
     }
     
+    // if( specifiedQualIndicesU && !specifiedQualIndices ){
+    // 	cerr << "ERROR cannot specify unresolved quality scores for indices"<<endl;
+    //     return 1;
+    // }
+
 
     string fastqin1;
     string fastqin2;
@@ -419,21 +438,43 @@ int main (int argc, char *argv[]) {
 			cerr << "ERROR: index found for " << index1 <<" in sequence "<<def1s<<" is not a valid DNA sequence" <<endl;
 			return 1;
 		    }
+		    
+		    if( index1[  indexi ] == 'N' ){
+			index1q[ indexi ] = char(qualForIndicesUnresolved+33);
+		    }
+		    
 		}
 	    }
 
 	    if(doubleIndexFromDefline){
-		index1  = tokensSemiCol[ tokensSemiCol.size() -2 ];             // second to last element should be the second index
-		index1q = string(index1.length(),char(qualForIndices+33));
+		//cerr<<vectorToString(tokensSemiCol)<<endl;
+		size_t idxUnderscore = ext1s.find("_");
 
-		index2  = tokensSemiCol[ tokensSemiCol.size() -2 ];             // last element should be the first index
-		index2q = string(index2.length(),char(qualForIndices+33));
-		
+		if( idxUnderscore != string::npos){
+
+		    index1  = ext1s.substr(0              ,idxUnderscore);             // second to last element should be the second index
+		    index1q = string(index1.length(),char(qualForIndices+33));
+		    
+		    index2  = ext1s.substr(idxUnderscore+1,string::npos ); // last element should be the first index
+		    index2q = string(index2.length(),char(qualForIndices+33));
+		    //cerr<<index1<<"#"<<index2<<endl;
+		}else{
+		    index1  = tokensSemiCol[ tokensSemiCol.size() -2 ];             // second to last element should be the second index
+		    index1q = string(index1.length(),char(qualForIndices+33));
+		    
+		    index2  = tokensSemiCol[ tokensSemiCol.size() -1 ];             // last element should be the first index
+		    index2q = string(index2.length(),char(qualForIndices+33));
+		}
 		for(unsigned int indexi=0;indexi<index1.size();indexi++){
 		    if( !isValidDNA( index1[ indexi ] ) ){
 			cerr << "ERROR: index found for " << index1 <<" in sequence "<<def1s<<" is not a valid DNA sequence" <<endl;
 			return 1;
 		    }
+		    
+		    if( index1[  indexi ] == 'N' ){
+			index1q[ indexi ] = char(qualForIndicesUnresolved+33);
+		    }
+
 		}
 
 		for(unsigned int indexi=0;indexi<index2.size();indexi++){
@@ -441,6 +482,11 @@ int main (int argc, char *argv[]) {
 			cerr << "ERROR: index found for " << index2 <<" in sequence "<<def1s<<" is not a valid DNA sequence" <<endl;
 			return 1;
 		    }
+		    
+		    if( index2[  indexi ] == 'N' ){
+			index2q[ indexi ] = char(qualForIndicesUnresolved+33);
+		    }
+
 		}
 
 

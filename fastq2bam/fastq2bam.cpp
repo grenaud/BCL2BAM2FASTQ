@@ -26,7 +26,7 @@ using namespace std;
 
 int main (int argc, char *argv[]) {
 
-    string bamoutfile;
+    string bamoutfile="/dev/stdout";
     string index1     ="";
     string index2     ="";
     string index1q    ="";
@@ -62,9 +62,9 @@ int main (int argc, char *argv[]) {
         cout<<"This program converts fasta/q files into unaligned bam\nUsage: "<<string(argv[0])<<" [options] [fastq in r1] (fastq in r2)"<<endl;
 	cout<<"The second fastq represents the reverse reads, do not specify it for single-end reads"<<endl;
         cout<<"Options:"<<endl;
-        cout<<"\tMandatory:"<<endl;
-        cout<<"\t\t-o [output bam]"<<endl;
-        cout<<"\tOptional:"<<endl;
+        // cout<<"\tMandatory:"<<endl;
+        // cout<<"\tOptional:"<<endl;
+        cout<<"\t\t-o [output bam]"<<"\t\t"<<"Write to file [output bam] instead of stdout"<<endl;
         cout<<"\t\t-a  If input is fasta"<<endl;
 	cout<<"\t\t-q  [qual]"<<"\t\t"<<"If input is fasta, use this qual as the quality (Default : "+stringify(qualForFasta)+")"<<endl;
 
@@ -96,10 +96,12 @@ int main (int argc, char *argv[]) {
     bool specifiedQual=false;
     bool specifiedQualIndices=false;
     bool specifiedQualIndicesU=false;
-
+    bool bamfileSpecified     = false;
+    
     for(int i=1;i<(argc);i++){
 	if(strcmp(argv[i],"-o") == 0  ){
             bamoutfile=string(argv[i+1]);
+	    bamfileSpecified =  
             i++;
             continue;
         }

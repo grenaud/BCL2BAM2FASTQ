@@ -5,7 +5,7 @@ BAMTOOLS = $(realpath ../bamtools/)
 LIBGAB   = $(realpath ../libgab/)
 
 CXXFLAGS  = -lm -O3 -Wall -I${LIBGAB}   -I${BAMTOOLS}/include/ -c
-LDLIBS   += ${BAMTOOLS}/lib/libbamtools.a -lm -lz
+LDLIBS   += ${BAMTOOLS}/build/src/api/libbamtools.a -lm -lz
 
 
 all: bcl2bam 

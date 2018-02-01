@@ -6,7 +6,7 @@ BAMTOOLS = $(realpath ../bamtools/)
 LIBGAB   = $(realpath ../libgab/)
 
 CXXFLAGS  = -lm -O3 -Wall  -I${LIBGAB} -I${LIBGAB}VCFparser/ -I${LIBGAB}/gzstream/ -I${BAMTOOLS}/include/ -c
-LDFLAGS  = ${BAMTOOLS}/lib/libbamtools.a -lz
+LDFLAGS  = ${BAMTOOLS}/build/src/api/libbamtools.a -lz
 
 
 all: fastq2bam

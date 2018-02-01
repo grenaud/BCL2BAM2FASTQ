@@ -7,7 +7,7 @@ LIBGAB   = $(realpath ../libgab/)
 
 
 #LIBGAB   = /home/gabriel_renaud/lib/
-LDLIBS+= ${BAMTOOLS}/lib/libbamtools.a ${LIBGAB}/utils.o -lm -lz
+LDLIBS+= ${BAMTOOLS}/build/src/api/libbamtools.a ${LIBGAB}/utils.o -lm -lz
 
 CXXFLAGS = -Wall -lm -O3 -lz -I${LIBGAB} -I${BAMTOOLS}/include/ -I${LIBGAB}/gzstream/  -c
 #LDFLAGS  = -lz

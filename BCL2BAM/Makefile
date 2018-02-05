@@ -4,7 +4,7 @@ CXX      = g++
 BAMTOOLS = $(realpath ../bamtools/)
 LIBGAB   = $(realpath ../libgab/)
 
-CXXFLAGS  = -lm -O3 -Wall -I${LIBGAB}   -I${BAMTOOLS}/include/ -c
+CXXFLAGS  = -lm -O3 -Wall -I${LIBGAB} -I${LIBGAB}/gzstream/   -I${BAMTOOLS}/src/ -c
 LDLIBS   += ${BAMTOOLS}/build/src/api/libbamtools.a -lm -lz
 
 

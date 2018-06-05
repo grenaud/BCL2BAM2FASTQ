@@ -448,6 +448,7 @@ int main (int argc, char *argv[]) {
 		if(strBeginsWith(def1s,"@")){
 		    def1s=def1s.substr(1,def1s.size()-1);
 		}
+		
 		if(strBeginsWith(def2s,"@")){
 		    def2s=def2s.substr(1,def2s.size()-1);
 		}
@@ -458,6 +459,17 @@ int main (int argc, char *argv[]) {
 		    cerr << " we tried names " << def1s <<" and "<< def2s <<endl;
 		    return 1;
 		}
+	    }else{//single end
+		
+
+		if(strEndsWith(def1s,"/1")){
+		    def1s=def1s.substr(0,def1s.size()-2);
+		}
+
+		if(strBeginsWith(def1s,"@")){
+		    def1s=def1s.substr(1,def1s.size()-1);
+		}
+		
 	    }
 
 

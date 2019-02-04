@@ -13,7 +13,7 @@ all: bcl2bam
 bcl2bam.o:	bcl2bam.cpp
 	${CXX} ${CXXFLAGS} bcl2bam.cpp
 
-bcl2bam:	bcl2bam.o ${LIBGAB}/utils.o  
+bcl2bam:	bcl2bam.o ${LIBGAB}/utils.o   ${LIBGAB}/gzstream/libgzstream.a
 	${CXX} -o $@ $^ $(LDLIBS)
 
 clean :

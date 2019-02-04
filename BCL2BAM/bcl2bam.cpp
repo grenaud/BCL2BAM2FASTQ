@@ -43,7 +43,7 @@ static const int offseqQualScores=33;
 
 typedef struct {
     unsigned int x;
-    unsigned int y;
+    unsigned int y;    
 } tileCoords;
 	
 
@@ -205,7 +205,8 @@ int main (int argc, char *argv[]) {
     string indexToExtract="";
     vector<int> tilesToUse;
     bool force=false;
-
+    bool fakePos=false;
+    
     string usage=string(""+string(argv[0])+" options  "+
 			"\nThis program reads a BCL directory and produces a BAM file\n"+
 			"\nOptions:\n"+
@@ -224,6 +225,7 @@ int main (int argc, char *argv[]) {
 			"\t\t"+""+" "+"--fiir"+"\t\t\t"+"If the run was forward, i1, i2 (reverse) we also rev. comp. i2  \n"+
 			"\t\t"+""+" "+""+"\t\t\t"+"The default is : forward, i1, reverse, i2 \n"+
 
+			"\t\t"+""+" " "--fakepos"+"\t\t\t"+"Output fake positions, not recommended (default: "+booleanAsString(fakePos)+")\n"+
 			"\t\t"+"-e"+" " "--exp"+"\t\t\t"+"Name of experiment (default: "+nameOfExperiment+")\n"+
 			"\t\t"+"-l"+" " "--lanes"+"\t\t\t"+"Colon separated list of lanes to use ex:1,3 (default: all)\n"+
 			"\t\t"+"-t"+" " "--tiles"+"\t\t\t"+"Colon separated list of tiles to use ex:1112,3212 (default: all)\n"+
@@ -254,6 +256,10 @@ int main (int argc, char *argv[]) {
             continue;
 	}
 
+	if( (strcmp(argv[i],"--fakepos") == 0)  ){
+	    fakePos=true;
+            continue;
+	}
 	
 	if( (strcmp(argv[i],"-s") == 0) || (strcmp(argv[i],"--indexseq") == 0)  ){
 	    onlyIndex=true;
@@ -345,7 +351,7 @@ int main (int argc, char *argv[]) {
 
     if(bamfiletowrite == "" ){ cerr<<"The output bam file must be specified"<<endl;    return 1;  }
     if(bclDirectory == "" ){   cerr<<"The folder of the BCL files must be specified"<<endl;    return 1;  }
-    if(pathToPositionFiles == "" ){ cerr<<"The folder of the position files must be specified"<<endl;    return 1;  }
+    if(pathToPositionFiles == "" ){ if(!fakePos){ cerr<<"The folder of the position files must be specified"<<endl;    return 1; } }
     if(forwardCycles == 0 ){ cerr<<"The number of cycles for the forward read must be specified"<<endl;    return 1;  }
     // if(reverseCycles == -1 ){ cerr<<"The number of cycles for the reverse read must be specified"<<endl;    return 1;  }
     // if(index1Cycles  == -1 ){ cerr<<"The number of cycles for the first index must be specified"<<endl;    return 1;  }
@@ -370,6 +376,7 @@ int main (int argc, char *argv[]) {
         return 1;    
     }
 
+    if(!fakePos)
     if(!isDirectory(pathToPositionFiles)){
 	cerr<<"The folder of the position files "<<pathToPositionFiles <<" is not a directory, exiting"<<endl;
         return 1;    
@@ -431,8 +438,11 @@ int main (int argc, char *argv[]) {
     int numberOfCycles=-1;
     for(int cycle=1;cycle<=MAXCYCLES;cycle++){
 	string lane="1";
-
+	if(lanesToUse.size()!=0){
+	    lane=stringify( lanesToUse[0] );
+	}
 	string bclFile=bclDirectory+"/L00"+lane+"/C"+ stringify(cycle)+".1/";
+	
 	if(isDirectory(bclFile)){
 	    numberOfCycles=cycle;
 	}else{
@@ -502,7 +512,9 @@ int main (int argc, char *argv[]) {
     //DETECTING TILE "ARRANGEMENT"
     string laneToUseForDetection ="1";  //using first lane , should always exists
     string cycleToUseForDetection="1"; //using first cycle, should always exists
-
+    if(lanesToUse.size()!=0){
+	laneToUseForDetection=stringify( lanesToUse[0] );	
+    }
     string bclDir=bclDirectory+"/L00"+laneToUseForDetection+"/C"+cycleToUseForDetection+".1/"; 
 
     vector<string> testTiles=getdir(bclDir);
@@ -520,6 +532,22 @@ int main (int argc, char *argv[]) {
 		    cerr<<"File  "<< testTiles[i] <<" in "<<bclDir<<" should begin with "<<requiredPrefix<<endl;
 		    return 1;
 		}
+	    }else{
+
+		requiredSuffix=".bcl.gz";
+		if(strEndsWith(testTiles[i],requiredSuffix)){
+		    string requiredPrefix="s_"+laneToUseForDetection+"_";
+		    if(strBeginsWith(testTiles[i],requiredPrefix)){
+			string tileTocheck=testTiles[i].substr(requiredPrefix.length(), testTiles[i].length()-requiredSuffix.length()-requiredPrefix.length());
+			int tileNumber=destringify<int>(tileTocheck);
+			tilesToUse.push_back(tileNumber);
+		    }else{
+			cerr<<"File  "<< testTiles[i] <<" in "<<bclDir<<" should begin with "<<requiredPrefix<<endl;
+			return 1;
+		    }
+		}
+
+
 	    }
 	}
 
@@ -562,7 +590,7 @@ int main (int argc, char *argv[]) {
 	for(int tileIndex=0;tileIndex<int(tilesToUse.size());tileIndex++){ //for each tile
 	    // cerr<<"Processing tile #"<<tilesToUse[tileIndex]<<endl;
 
-	    fstream * mybclfile= new fstream[numberOfCycles];
+	    igzstream * mybclfile= new igzstream[numberOfCycles];
 	    unsigned int numberOfClustersFirst=0 ;
 
 	    //Opening the BCL files and opening file pointers
@@ -593,156 +621,194 @@ int main (int argc, char *argv[]) {
 
 	
 		}else{
-		    cerr<<"BCL File "<< bclFile<<" does not exist"<<endl;
-		    return 1;
+		    bclFile=bclDirectory+"/L00"+ stringify(lanesToUse[laneIndex]) +"/C"+stringify(cycle)+".1/s_"+stringify(lanesToUse[laneIndex])+"_"+stringify(tilesToUse[tileIndex])+".bcl.gz"; 
+
+		    if(isFile(bclFile)){
+			
+			mybclfile[cycle-1].open(bclFile.c_str(),ios::in|ios::binary);
+			if (!mybclfile[cycle-1]) {
+			    cerr<<"Unable to read BCL file "<<bclFile<<" "<<strerror(errno)<<endl;
+			    return 1;
+			}
+			
+			unsigned int numberOfClusters ;
+			mybclfile[cycle-1].read((char*)&numberOfClusters, sizeof (int));
+			
+			if(numberOfClustersFirst == 0 ){
+			    numberOfClustersFirst=numberOfClusters;
+			    //cerr<"Found "<<numberOfClustersFirst<<" clusters "<<endl;
+			    cerr<<"Processing lane #"<<lanesToUse[laneIndex]<<" tile #"<<tilesToUse[tileIndex]<<" with "<<numberOfClustersFirst<<" clusters"<<endl;
+			}else{
+			    if(numberOfClustersFirst!=numberOfClusters){
+				cerr<<"Number of clusters in "<<bclFile<<" is different from the other cycles, exiting\n";
+				return 1;
+			    }
+			}
+		    }else{			
+			cerr<<"BCL File "<< bclFile<<" does not exist"<<endl;
+			return 1;
+		    }
 		}
-	    }
+	    }//each cycle
 
 	    //READ POSITION FILES
 	    vector<tileCoords> coordinatesFound;
 
-	    string posFile;
-	    //POS FILE
-	    posFile=pathToPositionFiles+"/s_"+ stringify(lanesToUse[laneIndex]) +"_"+zeroPad(tilesToUse[tileIndex],4)+"_pos.txt";
-	    if(isFile(posFile)){
-		//cerr<<"exists "<<posFile<<endl;
-		ifstream myFile;
-		string line;
+	    if( fakePos ){
 
-		myFile.open(posFile.c_str(), ios::in);
-		if (myFile.is_open()){
-		    while ( getline (myFile,line)){
-			istringstream ss( line ) ;
-			tileCoords toadd;
-			float x;
-			float y;
-			if( ss >> x >> y ) {
-			    toadd.x=do_round(x);
-			    toadd.y=do_round(y);
-			    coordinatesFound.push_back(toadd);
-			}else{
-			    cerr<<"Invalid line "<<line<<" in file:  "<<posFile<<endl;
-			    return 1;
-			}
-
-		    }
-		}else{
-		    cerr<<"Cannot open file  "<<posFile<<endl;
-		    return 1;
+		//if(coordinatesFound.size() != numberOfClustersFirst){
+		for(unsigned int i = 0;i<numberOfClustersFirst;i++){
+		    tileCoords toadd;
+		    toadd.x=i;
+		    toadd.y=i;
+		    coordinatesFound.push_back(toadd);
 		}
-		myFile.close();
-
+		
 	    }else{
-		//checking locs
-		posFile=pathToPositionFiles+"/L00"+ stringify(lanesToUse[laneIndex]) +"/s_"+stringify(lanesToUse[laneIndex])+"_"+stringify(tilesToUse[tileIndex])+".locs";
+		string posFile;
+		//POS FILE
+		posFile=pathToPositionFiles+"/s_"+ stringify(lanesToUse[laneIndex]) +"_"+zeroPad(tilesToUse[tileIndex],4)+"_pos.txt";
 
 		if(isFile(posFile)){
+		    //cerr<<"exists "<<posFile<<endl;
 		    ifstream myFile;
 		    string line;
 
-		    myFile.open(posFile.c_str(),ios::in|ios::binary);
+		    myFile.open(posFile.c_str(), ios::in);
 		    if (myFile.is_open()){
-			//header
-			uint32_t headerData[3] ;
-			myFile.read( (char*)headerData, 12 ) ;
+			while ( getline (myFile,line)){
+			    istringstream ss( line ) ;
+			    tileCoords toadd;
+			    float x;
+			    float y;
+			    if( ss >> x >> y ) {
+				toadd.x=do_round(x);
+				toadd.y=do_round(y);
+				coordinatesFound.push_back(toadd);
+			    }else{
+				cerr<<"Invalid line "<<line<<" in file:  "<<posFile<<endl;
+				return 1;
+			    }
 
-			 if(headerData[2] != numberOfClustersFirst){
-			     cerr<<"Found "<<numberOfClustersFirst <<" clusters in the bcl files but found "<<headerData[2]<<" coordinates in "<<posFile<<endl;
-			     return 1;
-			 }
-
-			
-			tileCoords toadd;
-			
-			float cc[2] ;
-			while(myFile.read( (char*)cc, 8 )){
-			    toadd.x=do_round( cc[0] ) ;
-			    toadd.y=do_round( cc[1] ) ;
-			    // cout<<toadd.x<<"\t"<<toadd.y<<endl;
-			    coordinatesFound.push_back(toadd);
 			}
-			
-			
-
-			//			nclusters_ = gunk[2] ;
 		    }else{
 			cerr<<"Cannot open file  "<<posFile<<endl;
 			return 1;
 		    }
 		    myFile.close();
 
-
 		}else{
-		    //checking clocs
-		    posFile=pathToPositionFiles+"/L00"+ stringify(lanesToUse[laneIndex]) +"/s_"+stringify(lanesToUse[laneIndex])+"_"+stringify(tilesToUse[tileIndex])+".clocs";
-		    //cerr<<posFile<<endl;
+		    //checking locs
+		    posFile=pathToPositionFiles+"/L00"+ stringify(lanesToUse[laneIndex]) +"/s_"+stringify(lanesToUse[laneIndex])+"_"+stringify(tilesToUse[tileIndex])+".locs";
+
 		    if(isFile(posFile)){
-			
+			ifstream myFile;
+			string line;
 
-			unsigned long totalClusters=0;
-			fstream myclocsfile (posFile.c_str(),ios::in|ios::binary);
-			if (!myclocsfile) {
-			    cout<<"Unable to read position file "<<posFile<<" "<<strerror(errno)<<endl;
-			}
-			char toread;
-			myclocsfile.read(&toread,sizeof(char)); //version
-			unsigned int numberOfTotalBins ;
-			myclocsfile.read((char*)&numberOfTotalBins, sizeof (int)); //number of bins
-			unsigned int binIndex=0 ;
-			double xOffset = 0;
-			double yOffset = 0;
+			myFile.open(posFile.c_str(),ios::in|ios::binary);
+			if (myFile.is_open()){
+			    //header
+			    uint32_t headerData[3] ;
+			    myFile.read( (char*)headerData, 12 ) ;
 
-
-			while(binIndex<numberOfTotalBins){ //for each bin
-
-			    unsigned char numberOfrecordsInbin ;
-			    myclocsfile.read((char*)&numberOfrecordsInbin, sizeof (char));
-
-			    totalClusters+=int(numberOfrecordsInbin);
-			    if(numberOfrecordsInbin == 0){
-				binIndex++;
-				continue;
+			    if(headerData[2] != numberOfClustersFirst){
+				cerr<<"Found "<<numberOfClustersFirst <<" clusters in the bcl files but found "<<headerData[2]<<" coordinates in "<<posFile<<endl;
+				return 1;
 			    }
 
-			    xOffset = float(blockSize) * (binIndex % blocksPerlLine);
-			    yOffset = float(blockSize) * (binIndex / blocksPerlLine);
-
-			    for(int i=0;i<int(numberOfrecordsInbin);i++){ //for each block in the bin
-				unsigned char x ;
-				myclocsfile.read((char*)&x, sizeof (char));
-				unsigned char y ;
-				myclocsfile.read((char*)&y, sizeof (char));
-				tileCoords toadd;
 			
-				toadd.x=do_round(xOffset + float(int(x))/10.0);
-				toadd.y=do_round(yOffset + float(int(y))/10.0);
+			    tileCoords toadd;
+			
+			    float cc[2] ;
+			    while(myFile.read( (char*)cc, 8 )){
+				toadd.x=do_round( cc[0] ) ;
+				toadd.y=do_round( cc[1] ) ;
+				// cout<<toadd.x<<"\t"<<toadd.y<<endl;
 				coordinatesFound.push_back(toadd);
-
 			    }
+			
+			
 
-			    binIndex++;
-	
+			    //			nclusters_ = gunk[2] ;
+			}else{
+			    cerr<<"Cannot open file  "<<posFile<<endl;
+			    return 1;
 			}
-			//cout<<totalClusters<<endl;
-			myclocsfile.close();
+			myFile.close();
+
+
+		    }else{
+			//checking clocs
+			posFile=pathToPositionFiles+"/L00"+ stringify(lanesToUse[laneIndex]) +"/s_"+stringify(lanesToUse[laneIndex])+"_"+stringify(tilesToUse[tileIndex])+".clocs";
+			//cerr<<posFile<<endl;
+			if(isFile(posFile)){
+			
+
+			    unsigned long totalClusters=0;
+			    fstream myclocsfile (posFile.c_str(),ios::in|ios::binary);
+			    if (!myclocsfile) {
+				cout<<"Unable to read position file "<<posFile<<" "<<strerror(errno)<<endl;
+			    }
+			    char toread;
+			    myclocsfile.read(&toread,sizeof(char)); //version
+			    unsigned int numberOfTotalBins ;
+			    myclocsfile.read((char*)&numberOfTotalBins, sizeof (int)); //number of bins
+			    unsigned int binIndex=0 ;
+			    double xOffset = 0;
+			    double yOffset = 0;
+
+
+			    while(binIndex<numberOfTotalBins){ //for each bin
+
+				unsigned char numberOfrecordsInbin ;
+				myclocsfile.read((char*)&numberOfrecordsInbin, sizeof (char));
+
+				totalClusters+=int(numberOfrecordsInbin);
+				if(numberOfrecordsInbin == 0){
+				    binIndex++;
+				    continue;
+				}
+
+				xOffset = float(blockSize) * (binIndex % blocksPerlLine);
+				yOffset = float(blockSize) * (binIndex / blocksPerlLine);
+
+				for(int i=0;i<int(numberOfrecordsInbin);i++){ //for each block in the bin
+				    unsigned char x ;
+				    myclocsfile.read((char*)&x, sizeof (char));
+				    unsigned char y ;
+				    myclocsfile.read((char*)&y, sizeof (char));
+				    tileCoords toadd;
+			
+				    toadd.x=do_round(xOffset + float(int(x))/10.0);
+				    toadd.y=do_round(yOffset + float(int(y))/10.0);
+				    coordinatesFound.push_back(toadd);
+
+				}
+
+				binIndex++;
+	
+			    }
+			    //cout<<totalClusters<<endl;
+			    myclocsfile.close();
 
 
 
-		     }else{
-			cerr<<"Cannot seem to find the position files, exiting"<<endl;
-			return 1;
-		    }
+			}else{
+			    cerr<<"Cannot seem to find the position files, exiting"<<endl;
+			    return 1;
+			}
 		    
-		}
+		    }
 
-	    }
+		}
+	    }	    
 
 	    if(coordinatesFound.size() != numberOfClustersFirst){
 		cerr<<"Found "<<numberOfClustersFirst <<" clusters in the bcl files but "<<coordinatesFound.size()<<" coordinates exiting"<<endl;
 		return 1;
 	    }
 	    // return 1;
-
+	    
 
 		//bclDirectory+"/L00"+ stringify(lanesToUse[laneIndex]) +"/C"+stringify(cycle)+".1/s_"+stringify(lanesToUse[laneIndex])+"_"+stringify(tilesToUse[tileIndex])+".bcl"; 
 

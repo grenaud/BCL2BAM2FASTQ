@@ -442,7 +442,7 @@ int main (int argc, char *argv[]) {
 	    lane=stringify( lanesToUse[0] );
 	}
 	string bclFile=bclDirectory+"/L00"+lane+"/C"+ stringify(cycle)+".1/";
-	
+
 	if(isDirectory(bclFile)){
 	    numberOfCycles=cycle;
 	}else{

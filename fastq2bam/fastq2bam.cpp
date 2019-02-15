@@ -46,7 +46,7 @@ int main (int argc, char *argv[]) {
     bool singleIndexFromDefline = false;
     bool doubleIndexFromDefline = false;
     bool indexFromDefline       = false;
-
+    string charDelim2indice="_";
     bool singleEndMode=false;
     int qualForFasta=0;
     int qualForIndices          =30;
@@ -98,6 +98,8 @@ int main (int argc, char *argv[]) {
 
         cout<<"\t\t\t-si Use the single index specified in the defline (as usually provided by Illumina)"<<endl;
         cout<<"\t\t\t-di As above but for double index"<<endl;
+	cout<<"\t\t\t-dis [char] Delimiter char for  double indices in the defline (default: "+charDelim2indice+")"<<endl;
+	cout<<"\t\t\t     e.g. 1:N:0:NNNNNNN"+charDelim2indice+"NNNNNNN"<<endl;
 
         return 1;
     }
@@ -239,6 +241,16 @@ int main (int argc, char *argv[]) {
             continue;
         }
 
+	if(strcmp(argv[i],"-dis") == 0  ){
+	    charDelim2indice=string(argv[i+1]);
+	    if(charDelim2indice.length()!=1){
+		cerr<<"The delimited should be 1 character long"<<endl;
+		return 1;
+	    }
+	    i++;
+            continue;
+        }
+
 	break;
     }
 
@@ -268,8 +280,8 @@ int main (int argc, char *argv[]) {
         return 1;
     }
 
-    cerr<<vectorToString(fastqin1)<<endl;
-    cerr<<vectorToString(fastqin2)<<endl;
+    cerr<<"fwd files "<<vectorToString(fastqin1)<<endl;
+    cerr<<"rev files "<<vectorToString(fastqin2)<<endl;
     
     if(bamoutfile.empty()){
 	cerr << "ERROR -o option is mandatory " << endl;
@@ -516,14 +528,17 @@ int main (int argc, char *argv[]) {
 
 		if(doubleIndexFromDefline){
 		    //cerr<<vectorToString(tokensSemiCol)<<endl;
-		    size_t idxUnderscore = ext1s.find("_");
+		    string lastElemColon  = tokensSemiCol[ tokensSemiCol.size() -1 ]; //last element should be the indices
+		    size_t idxUnderscore = lastElemColon.find(charDelim2indice);
+		    // cerr<<idxUnderscore<<endl;
+		    // return 1;
 
 		    if( idxUnderscore != string::npos){
-
-			index1  = ext1s.substr(0              ,idxUnderscore);             // second to last element should be the second index
+			
+			index1  = lastElemColon.substr(0              ,idxUnderscore);             // second to last element should be the second index
 			index1q = string(index1.length(),char(qualForIndices+33));
 		    
-			index2  = ext1s.substr(idxUnderscore+1,string::npos ); // last element should be the first index
+			index2  = lastElemColon.substr(idxUnderscore+1,string::npos ); // last element should be the first index
 			index2q = string(index2.length(),char(qualForIndices+33));
 			//cerr<<index1<<"#"<<index2<<endl;
 		    }else{
@@ -533,6 +548,7 @@ int main (int argc, char *argv[]) {
 			index2  = tokensSemiCol[ tokensSemiCol.size() -1 ];             // last element should be the first index
 			index2q = string(index2.length(),char(qualForIndices+33));
 		    }
+
 		    for(unsigned int indexi=0;indexi<index1.size();indexi++){
 			if( !isValidDNA( index1[ indexi ] ) ){
 			    cerr << "ERROR: index found for " << index1 <<" in sequence "<<def1s<<" is not a valid DNA sequence" <<endl;

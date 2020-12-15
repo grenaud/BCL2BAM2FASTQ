@@ -14,7 +14,7 @@ all: fastq2bam
 fastq2bam.o:	fastq2bam.cpp
 	${CXX} ${CXXFLAGS} fastq2bam.cpp
 
-fastq2bam:	fastq2bam.o ${LIBGAB}/libgab.a ${LIBGAB}/PutProgramInHeader.o ${LIBGAB}/gzstream/gzstream.o ${LIBGAB}/FastQObj.o  ${LIBGAB}/FastQParser.o
+fastq2bam:	fastq2bam.o ${LIBGAB}/libgab.a ${LIBGAB}/PutProgramInHeader.o ${LIBGAB}/gzstream/gzstream.o 
 	${CXX} -o $@ $^ $(LDFLAGS)
 
 
